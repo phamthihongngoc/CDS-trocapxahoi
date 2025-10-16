@@ -39,7 +39,7 @@ const LoginPage: React.FC = () => {
     <div 
       className="min-h-screen flex items-center justify-center p-4 relative"
       style={{
-        backgroundImage: 'url(/attached_assets/background_1760024752594.jpg)',
+        backgroundImage: 'url(/img/bg.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'
@@ -52,7 +52,7 @@ const LoginPage: React.FC = () => {
           <div className="hidden lg:flex items-center justify-center flex-1">
             <div className="relative">
               <img 
-                src="/attached_assets/lg_1760024752596.png" 
+                src="/img/hehe.png" 
                 alt="Logo" 
                 className="w-80 h-80 object-contain"
               />

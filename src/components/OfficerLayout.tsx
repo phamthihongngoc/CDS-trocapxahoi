@@ -56,8 +56,8 @@ const OfficerLayout: React.FC<OfficerLayoutProps> = ({ children }) => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-3">
               <img 
-                src="/attached_assets/lg_1760024752596.png" 
-                alt="Logo" 
+                src="/img/logo.png" 
+                alt="logo" 
                 className="h-10 w-10 object-contain"
               />
               <div>

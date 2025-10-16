@@ -34,7 +34,7 @@ const Header: React.FC = () => {
               🏛️
             </div>
             <div>
-              <h1 className="text-xl font-bold">Hệ thống Quản lý Trợ câps Xã hội</h1>
+              <h1 className="text-xl font-bold">HỆ THỐNG TRỢ CẤP XÃ HỘI</h1>
               <p className="text-sm text-blue-100">Tỉnh Lạng Sơn</p>
             </div>
           </div>
