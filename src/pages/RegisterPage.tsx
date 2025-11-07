@@ -66,7 +66,7 @@ const RegisterPage: React.FC = () => {
 
   return (
     <div 
-      className="min-h-screen flex items-center justify-center p-4 relative"
+      className="min-h-screen flex items-center justify-center p-4"
       style={{
         backgroundImage: 'url(/img/bg.jpg)',
         backgroundSize: 'cover',
@@ -74,24 +74,17 @@ const RegisterPage: React.FC = () => {
         backgroundRepeat: 'no-repeat'
       }}
     >
-      <div className="absolute inset-0 bg-white/30 backdrop-blur-sm"></div>
-      
-      <div className="relative z-10 w-full max-w-5xl">
-        <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl p-12 flex items-center gap-12 h-[650px]">
-          <div className="hidden lg:flex items-center justify-center flex-1">
-            <div className="relative">
-              <img 
-                src="/img/hehe.png" 
-                alt="Logo" 
-                className="w-80 h-80 object-contain"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 max-w-md w-full">
-            <h2 className="text-3xl font-bold text-gray-900 mb-8 text-center">
-              Đăng ký tài khoản
-            </h2>
+      <div className="w-full max-w-md">
+        {/* Form Register - Glass morphism */}
+        <div 
+          className="bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl p-8 border border-white/20"
+          style={{
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)'
+          }}
+        >
+          <h2 className="text-3xl font-bold text-gray-900 mb-6 text-center">
+            Đăng ký tài khoản
+          </h2>
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
@@ -226,7 +219,7 @@ const RegisterPage: React.FC = () => {
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-700">
                 Đã có tài khoản?{' '}
                 <a
                   href="#/login"
@@ -236,7 +229,6 @@ const RegisterPage: React.FC = () => {
                 </a>
               </p>
             </div>
-          </div>
         </div>
       </div>
     </div>

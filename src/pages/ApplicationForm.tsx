@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
 import api from '../utils/api';
+import NavigationHero from '../components/NavigationHero';
 
 interface Program {
   id: number;
@@ -9,7 +10,7 @@ interface Program {
   name: string;
   description: string;
   type: string;
-  amount: string;
+  amount: number; // backend returns REAL -> number
 }
 
 const ApplicationForm: React.FC = () => {
@@ -19,18 +20,21 @@ const ApplicationForm: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
+  const [uploadError, setUploadError] = useState<string>('');
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [canSubmit, setCanSubmit] = useState(false); // Ngăn auto-submit ngay sau chuyển bước
 
   const [formData, setFormData] = useState({
     // Bước 1: Thông tin cá nhân
     citizen_id: '',
-    full_name: user?.fullName || '',
+    full_name: '',
     date_of_birth: '',
     gender: '',
-    phone: user?.phone || '',
-    email: user?.email || '',
+    phone: '',
+    email: '',
     
     // Bước 2: Địa chỉ
-    address: user?.address || '',
+    address: '',
     district: '',
     commune: '',
     village: '',
@@ -44,18 +48,35 @@ const ApplicationForm: React.FC = () => {
     program_id: '',
     application_type: '',
     support_amount: '',
+    payment_schedule: '', // Kỳ lĩnh: một lần/hàng tháng/hàng quý
+    payment_method: '', // Phương thức: tiền mặt/chuyển khoản
+    bank_account_holder: '', // Chủ tài khoản (nếu chuyển khoản)
+    bank_account_number: '', // Số tài khoản
+    bank_name: '', // Tên ngân hàng
     
     // Bước 5: Tài liệu
     notes: ''
   });
 
   const [householdMembers, setHouseholdMembers] = useState([
-    { name: user?.fullName || '', relationship: 'Chủ hộ', age: '', occupation: '' }
+    { name: '', relationship: 'Chủ hộ', age: '', occupation: '' }
   ]);
 
   useEffect(() => {
     fetchPrograms();
   }, []);
+
+  // Auto-fill user information from logged in account
+  useEffect(() => {
+    if (user) {
+      setFormData(prev => ({
+        ...prev,
+        citizen_id: user.citizenId || '',
+        full_name: user.fullName || '',
+        email: user.email || ''
+      }));
+    }
+  }, [user]);
 
   const fetchPrograms = async () => {
     try {
@@ -90,26 +111,60 @@ const ApplicationForm: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Ngăn Enter key submit form khi chưa ở bước 5
+    if (e.key === 'Enter' && currentStep !== 5) {
+      e.preventDefault();
+      console.log('Enter key blocked - not at step 5');
+    }
+  };
+
   const handleProgramSelect = (program: Program) => {
     setFormData(prev => ({
       ...prev,
       program_id: program.id.toString(),
       application_type: program.type,
-      support_amount: program.amount.replace(/[^0-9.]/g, '')
+      // store as string for input; convert number -> string
+      support_amount: program.amount != null ? String(program.amount) : ''
     }));
   };
 
   const validateStep = (step: number): boolean => {
     switch (step) {
       case 1:
-        return !!(formData.citizen_id && formData.full_name && formData.date_of_birth && 
-                  formData.gender && formData.phone);
+        return !!(formData.date_of_birth && formData.gender);
       case 2:
-        return !!(formData.address && formData.district && formData.commune && formData.village);
+        return !!(formData.district);
       case 3:
         return !!(formData.household_size && formData.housing_condition && householdMembers.length > 0);
       case 4:
-        return !!(formData.program_id);
+        console.log('Validating Step 4:', {
+          program_id: formData.program_id,
+          payment_schedule: formData.payment_schedule,
+          payment_method: formData.payment_method,
+          bank_account_holder: formData.bank_account_holder,
+          bank_account_number: formData.bank_account_number,
+          bank_name: formData.bank_name
+        });
+        // Bắt buộc: chọn chương trình, kỳ lĩnh, phương thức
+        if (!formData.program_id || !formData.payment_schedule || !formData.payment_method) {
+          console.log('❌ Missing required fields:', {
+            program_id: !formData.program_id,
+            payment_schedule: !formData.payment_schedule,
+            payment_method: !formData.payment_method
+          });
+          return false;
+        }
+        // Nếu chọn chuyển khoản thì bắt buộc thông tin ngân hàng
+        if (formData.payment_method === 'chuyen-khoan') {
+          const isValid = !!(formData.bank_account_holder && formData.bank_account_number && formData.bank_name);
+          if (!isValid) {
+            console.log('❌ Missing bank info');
+          }
+          return isValid;
+        }
+        console.log('✅ Step 4 valid');
+        return true;
       case 5:
         return true; // Bước 5 không bắt buộc
       default:
@@ -118,9 +173,53 @@ const ApplicationForm: React.FC = () => {
   };
 
   const nextStep = () => {
+    console.log('🔵 nextStep called. Current step:', currentStep);
+    
+    if (currentStep === 4) {
+      // Validation chi tiết cho bước 4
+      console.log('🔍 Validating Step 4...');
+      if (!formData.program_id) {
+        alert('⚠️ Vui lòng chọn chương trình trợ cấp!');
+        return;
+      }
+      if (!formData.payment_schedule) {
+        alert('⚠️ Vui lòng chọn kỳ lĩnh!');
+        return;
+      }
+      if (!formData.payment_method) {
+        alert('⚠️ Vui lòng chọn phương thức nhận!');
+        return;
+      }
+      if (formData.payment_method === 'chuyen-khoan') {
+        if (!formData.bank_account_holder) {
+          alert('⚠️ Vui lòng nhập tên chủ tài khoản ngân hàng!');
+          return;
+        }
+        if (!formData.bank_account_number) {
+          alert('⚠️ Vui lòng nhập số tài khoản ngân hàng!');
+          return;
+        }
+        if (!formData.bank_name) {
+          alert('⚠️ Vui lòng nhập tên ngân hàng!');
+          return;
+        }
+      }
+      console.log('✅ Step 4 validation passed');
+    }
+    
     if (validateStep(currentStep)) {
-      setCurrentStep(prev => Math.min(prev + 1, 5));
+      console.log('✅ Moving to next step:', currentStep + 1);
+      if (currentStep === 4) {
+        // Reset canSubmit khi chuyển sang bước 5
+        setCanSubmit(false);
+      }
+      setCurrentStep(prev => {
+        const next = Math.min(prev + 1, 5);
+        console.log('🟢 New step set to:', next);
+        return next;
+      });
     } else {
+      console.log('❌ Validation failed');
       alert('Vui lòng điền đầy đủ thông tin bắt buộc!');
     }
   };
@@ -131,20 +230,35 @@ const ApplicationForm: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔴 handleSubmit called. Current step:', currentStep, 'canSubmit:', canSubmit);
+    
+    // Chỉ cho phép submit ở bước 5 VÀ sau khi user đã click nút submit
+    if (currentStep !== 5) {
+      console.log('❌ Cannot submit - not at step 5. Current step:', currentStep);
+      alert('⚠️ Vui lòng hoàn thành tất cả các bước trước khi gửi đơn!');
+      return;
+    }
+
+    if (!canSubmit) {
+      console.log('❌ Submit blocked - user has not clicked submit button yet');
+      return;
+    }
     
     if (!validateStep(currentStep)) {
       alert('Vui lòng điền đầy đủ thông tin bắt buộc!');
       return;
     }
 
+    console.log('📤 Submitting application...');
     setIsSubmitting(true);
     try {
-      const submitData = {
-        ...formData,
-        household_members_data: JSON.stringify(householdMembers)
-      };
-      
-      const response = await api.post('/api/applications', submitData);
+      // Build FormData to support file uploads (even when no files)
+      const fd = new FormData();
+      Object.entries(formData).forEach(([k, v]) => fd.append(k, String(v ?? '')));
+      fd.append('household_members_data', JSON.stringify(householdMembers));
+      attachments.forEach((file) => fd.append('attachments', file, file.name));
+
+      const response = await api.postForm('/api/applications/submit', fd);
       
       if (response.success) {
         setSubmitSuccess(true);
@@ -159,23 +273,84 @@ const ApplicationForm: React.FC = () => {
     }
   };
 
+  // ===== Files (Step 5) =====
+  const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+  const ALLOWED_EXTS = ['png', 'jpg', 'jpeg', 'docx', 'pdf'];
+  const ALLOWED_MIME = [
+    'image/png',
+    'image/jpeg',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/pdf',
+  ];
+
+  const onFilesSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError('');
+    const files = Array.from(e.target.files || []);
+    const ok: File[] = [];
+    const bad: string[] = [];
+
+    files.forEach((f) => {
+      const ext = (f.name.split('.').pop() || '').toLowerCase();
+      const typeOk = ALLOWED_EXTS.includes(ext) || ALLOWED_MIME.includes(f.type);
+      const sizeOk = f.size <= MAX_FILE_SIZE;
+      if (typeOk && sizeOk) ok.push(f);
+      else {
+        bad.push(`${f.name}${!typeOk ? ' (định dạng không hợp lệ)' : ''}${!sizeOk ? ' (vượt 10MB)' : ''}`.trim());
+      }
+    });
+
+    if (bad.length) {
+      setUploadError(`Một số tệp không hợp lệ: ${bad.join(', ')}`);
+    }
+    // Append to existing list (avoid duplicates by name/size)
+    const dedup = new Map<string, File>();
+    [...attachments, ...ok].forEach((f) => dedup.set(`${f.name}-${f.size}`, f));
+    setAttachments(Array.from(dedup.values()));
+    // reset input value so onChange triggers with same file again if needed
+    e.target.value = '';
+  };
+
+  const removeAttachment = (key: string) => {
+    setAttachments(prev => prev.filter(f => `${f.name}-${f.size}` !== key));
+  };
+
   if (submitSuccess) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
-          <div className="text-6xl mb-4">✅</div>
-          <h2 className="text-2xl font-semibold mb-4 text-green-600">Gửi đơn thành công!</h2>
-          <p className="text-gray-600 mb-6">
-            Đơn đăng ký của bạn đã được gửi thành công. Hệ thống sẽ thông báo kết quả xử lý trong vòng 15 ngày làm việc.
-          </p>
-          <div className="space-y-3">
-            <a
-              href="#/applications"
-              className="block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Tra cứu hồ sơ
-            </a>
-            <a href="#/" className="block text-gray-600 hover:text-gray-800">Về trang chủ</a>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm animate-fadeIn">
+        <div className="bg-white rounded-2xl shadow-2xl p-8 max-w-md w-full mx-4 transform animate-scaleIn">
+          <div className="text-center">
+            {/* Success Icon */}
+            <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-100 mb-6 animate-bounce">
+              <svg className="h-10 w-10 text-green-600" fill="none" stroke="currentColor" strokeWidth={3} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              Gửi đơn thành công!
+            </h3>
+            
+            {/* Message */}
+            <p className="text-gray-600 mb-6 leading-relaxed">
+              Đơn đăng ký của bạn đã được gửi thành công. Hệ thống sẽ thông báo kết quả xử lý trong vòng 15 ngày làm việc.
+            </p>
+            
+            {/* Buttons */}
+            <div className="flex flex-col gap-3">
+              <a
+                href="#/my-applications"
+                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl font-semibold hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
+              >
+                Xem hồ sơ
+              </a>
+              <a 
+                href="#/" 
+                className="px-6 py-3 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-all"
+              >
+                Quay về trang chủ
+              </a>
+            </div>
           </div>
         </div>
       </div>
@@ -193,8 +368,10 @@ const ApplicationForm: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="container mx-auto px-4 max-w-4xl">
+    <div className="min-h-screen bg-gray-50">
+      <NavigationHero />
+      <div className="py-8">
+        <div className="container mx-auto px-4 max-w-4xl">
         {/* Progress Steps */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
@@ -228,51 +405,51 @@ const ApplicationForm: React.FC = () => {
 
         {/* Form Card */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <div className="flex items-center mb-6">
-            <a
-              href="#/"
-              className="mr-4 text-gray-600 hover:text-gray-800 transition-colors"
-              title="Về trang chủ"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-            </a>
+          <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">
               Bước {currentStep}: {stepTitles[currentStep - 1].title}
             </h1>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} onKeyDown={handleKeyDown}>
             {/* Step 1: Personal Info */}
             {currentStep === 1 && (
               <div className="space-y-4">
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <p className="text-sm text-blue-800">
+                    <strong>Lưu ý:</strong> Số CCCD, Họ tên và Email được tự động điền từ tài khoản đăng nhập của bạn.
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      CMND/CCCD <span className="text-red-500">*</span>
+                      CMND/CCCD
                     </label>
                     <input
                       type="text"
                       name="citizen_id"
                       value={formData.citizen_id}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                       placeholder="Số CMND/CCCD"
-                      required
+                      title="Tự động điền từ tài khoản đăng nhập"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Họ và tên <span className="text-red-500">*</span>
+                      Họ và tên
                     </label>
                     <input
                       type="text"
                       name="full_name"
                       value={formData.full_name}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                      placeholder="Nhập họ và tên"
+                      title="Tự động điền từ tài khoản đăng nhập"
                     />
                   </div>
                 </div>
@@ -313,7 +490,7 @@ const ApplicationForm: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Số điện thoại <span className="text-red-500">*</span>
+                      Số điện thoại
                     </label>
                     <input
                       type="tel"
@@ -321,7 +498,7 @@ const ApplicationForm: React.FC = () => {
                       value={formData.phone}
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
+                      placeholder="Số điện thoại"
                     />
                   </div>
                   <div>
@@ -330,8 +507,10 @@ const ApplicationForm: React.FC = () => {
                       type="email"
                       name="email"
                       value={formData.email}
-                      onChange={handleInputChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      readOnly
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                      placeholder="Email"
+                      title="Tự động điền từ tài khoản đăng nhập"
                     />
                   </div>
                 </div>
@@ -343,7 +522,7 @@ const ApplicationForm: React.FC = () => {
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Địa chỉ chi tiết <span className="text-red-500">*</span>
+                    Địa chỉ chi tiết
                   </label>
                   <textarea
                     name="address"
@@ -352,7 +531,6 @@ const ApplicationForm: React.FC = () => {
                     rows={2}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     placeholder="Số nhà, tên đường..."
-                    required
                   />
                 </div>
 
@@ -384,7 +562,7 @@ const ApplicationForm: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Xã/Phường <span className="text-red-500">*</span>
+                      Xã/Phường
                     </label>
                     <input
                       type="text"
@@ -393,12 +571,11 @@ const ApplicationForm: React.FC = () => {
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Nhập tên xã/phường"
-                      required
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Thôn/Khu phố <span className="text-red-500">*</span>
+                      Thôn/Khu phố
                     </label>
                     <input
                       type="text"
@@ -407,7 +584,6 @@ const ApplicationForm: React.FC = () => {
                       onChange={handleInputChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       placeholder="Nhập tên thôn/khu phố"
-                      required
                     />
                   </div>
                 </div>
@@ -550,7 +726,7 @@ const ApplicationForm: React.FC = () => {
               </div>
             )}
 
-            {/* Step 4: Support Program */}
+            {/* Step 4: Support Program (Trợ cấp) */}
             {currentStep === 4 && (
               <div className="space-y-4">
                 {loading ? (
@@ -589,7 +765,7 @@ const ApplicationForm: React.FC = () => {
                               <div className="flex items-center justify-between">
                                 <span className="text-sm text-gray-500">Mã: {program.code}</span>
                                 <span className="text-lg font-bold text-green-600">
-                                  {parseFloat(program.amount).toLocaleString('vi-VN')} đ
+                                  {Number(program.amount).toLocaleString('vi-VN')} đ
                                 </span>
                               </div>
                             </div>
@@ -602,6 +778,112 @@ const ApplicationForm: React.FC = () => {
                         Hiện chưa có chương trình hỗ trợ nào
                       </div>
                     )}
+
+                    {/* Cho phép nhập chỉnh mức trợ cấp nếu khác mức mặc định */}
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Mức trợ cấp đề nghị (VNĐ)
+                      </label>
+                      <input
+                        type="number"
+                        name="support_amount"
+                        value={formData.support_amount}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Nhập số tiền (tuỳ chọn)"
+                      />
+                      <p className="mt-1 text-xs text-gray-500">Có thể để trống để dùng theo chương trình đã chọn.</p>
+                    </div>
+
+                    {/* Kỳ lĩnh */}
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Kỳ lĩnh <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="payment_schedule"
+                        value={formData.payment_schedule}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        required
+                      >
+                        <option value="">-- Chọn kỳ lĩnh --</option>
+                        <option value="mot-lan">Một lần</option>
+                        <option value="hang-thang">Hàng tháng</option>
+                        <option value="hang-quy">Hàng quý</option>
+                        <option value="hang-nam">Hàng năm</option>
+                      </select>
+                    </div>
+
+                    {/* Phương thức nhận */}
+                    <div className="mt-4">
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Phương thức nhận <span className="text-red-500">*</span>
+                      </label>
+                      <select
+                        name="payment_method"
+                        value={formData.payment_method}
+                        onChange={handleInputChange}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                        required
+                      >
+                        <option value="">-- Chọn phương thức --</option>
+                        <option value="tien-mat">Tiền mặt</option>
+                        <option value="chuyen-khoan">Chuyển khoản ngân hàng</option>
+                      </select>
+                    </div>
+
+                    {/* Thông tin ngân hàng (nếu chọn chuyển khoản) */}
+                    {formData.payment_method === 'chuyen-khoan' && (
+                      <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-3">
+                        <h4 className="text-sm font-semibold text-blue-900">Thông tin tài khoản ngân hàng</h4>
+                        
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Chủ tài khoản <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="bank_account_holder"
+                            value={formData.bank_account_holder}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Họ tên chủ tài khoản"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Số tài khoản <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="bank_account_number"
+                            value={formData.bank_account_number}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Số tài khoản ngân hàng"
+                            required
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Ngân hàng <span className="text-red-500">*</span>
+                          </label>
+                          <input
+                            type="text"
+                            name="bank_name"
+                            value={formData.bank_name}
+                            onChange={handleInputChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            placeholder="Tên ngân hàng và chi nhánh"
+                            required
+                          />
+                        </div>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -612,19 +894,62 @@ const ApplicationForm: React.FC = () => {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-md font-semibold text-gray-800 mb-3">📎 Tài liệu đính kèm</h3>
-                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-                    <div className="text-4xl mb-2">📄</div>
-                    <p className="text-sm text-gray-600 mb-3">
-                      Tải lên các giấy tờ cần thiết (CMND, hộ khẩu, giấy xác nhận...)
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                    <p className="text-sm text-gray-600 mb-2">
+                      Cho phép tải lên: <strong>.png, .jpg, .jpeg, .docx, .pdf</strong> (tối đa 10MB/tệp)
                     </p>
-                    <div className="bg-gray-50 rounded-lg p-4 text-left">
-                      <p className="text-xs text-gray-500 mb-2">📌 <strong>Lưu ý:</strong></p>
-                      <ul className="text-xs text-gray-600 space-y-1">
-                        <li>• Chức năng upload tài liệu đang được phát triển</li>
-                        <li>• Hiện tại bạn có thể mang giấy tờ gốc đến UBND để nộp trực tiếp</li>
-                        <li>• Hoặc gửi qua email: baotro@langson.gov.vn kèm mã hồ sơ</li>
+                    <input
+                      type="file"
+                      multiple
+                      accept=".png,.jpg,.jpeg,.docx,.pdf"
+                      onChange={onFilesSelected}
+                      className="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-md file:border-0 file:text-sm file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                    />
+                    {uploadError && (
+                      <p className="text-red-600 text-sm mt-2">{uploadError}</p>
+                    )}
+
+                    {/* Preview list */}
+                    {attachments.length > 0 && (
+                      <ul className="mt-4 space-y-2">
+                        {attachments.map((f) => {
+                          const key = `${f.name}-${f.size}`;
+                          const isImage = f.type.startsWith('image/');
+                          return (
+                            <li
+                              key={key}
+                              className="flex items-center justify-between bg-gray-50 rounded-md p-2 border border-gray-200"
+                            >
+                              <div className="flex items-center space-x-3 overflow-hidden">
+                                {isImage ? (
+                                  <img
+                                    src={URL.createObjectURL(f)}
+                                    alt={f.name}
+                                    className="h-10 w-10 object-cover rounded border"
+                                  />
+                                ) : (
+                                  <span className="text-2xl">
+                                    {f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf') ? '📕' : 
+                                     f.name.toLowerCase().endsWith('.docx') || f.type.includes('wordprocessingml') ? '📘' : '📄'}
+                                  </span>
+                                )}
+                                <div className="truncate">
+                                  <p className="text-sm font-medium truncate">{f.name}</p>
+                                  <p className="text-xs text-gray-500">{Math.round(f.size / 1024)} KB</p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeAttachment(key)}
+                                className="text-red-600 hover:text-red-800 text-sm"
+                              >
+                                Xoá
+                              </button>
+                            </li>
+                          );
+                        })}
                       </ul>
-                    </div>
+                    )}
                   </div>
                 </div>
 
@@ -641,21 +966,35 @@ const ApplicationForm: React.FC = () => {
                     {selectedProgram && (
                       <>
                         <p><strong>Chương trình:</strong> {selectedProgram.name}</p>
-                        <p><strong>Mức hỗ trợ:</strong> {parseFloat(selectedProgram.amount).toLocaleString('vi-VN')} đ</p>
+                        <p><strong>Mức hỗ trợ:</strong> {Number(selectedProgram.amount).toLocaleString('vi-VN')} đ</p>
                       </>
+                    )}
+                    {formData.payment_schedule && (
+                      <p><strong>Kỳ lĩnh:</strong> {
+                        formData.payment_schedule === 'mot-lan' ? 'Một lần' :
+                        formData.payment_schedule === 'hang-thang' ? 'Hàng tháng' :
+                        formData.payment_schedule === 'hang-quy' ? 'Hàng quý' :
+                        formData.payment_schedule === 'hang-nam' ? 'Hàng năm' : formData.payment_schedule
+                      }</p>
+                    )}
+                    {formData.payment_method && (
+                      <p><strong>Phương thức:</strong> {formData.payment_method === 'tien-mat' ? 'Tiền mặt' : 'Chuyển khoản'}</p>
+                    )}
+                    {formData.payment_method === 'chuyen-khoan' && formData.bank_account_number && (
+                      <p><strong>Tài khoản NH:</strong> {formData.bank_account_number} - {formData.bank_account_holder} ({formData.bank_name})</p>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú (nếu có)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Ghi chú/Lý do xin trợ cấp</label>
                   <textarea
                     name="notes"
                     value={formData.notes}
                     onChange={handleInputChange}
-                    rows={3}
+                    rows={4}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    placeholder="Thông tin bổ sung..."
+                    placeholder="Mô tả hoàn cảnh, lý do cần hỗ trợ (ví dụ: mất việc làm, tai nạn, bệnh hiểm nghèo, thiên tai...)&#10;&#10;Ghi chú này sẽ giúp cán bộ xét duyệt nhanh hơn."
                   />
                 </div>
 
@@ -692,7 +1031,18 @@ const ApplicationForm: React.FC = () => {
                 </button>
               ) : (
                 <button
-                  type="submit"
+                  type="button"
+                  onClick={() => {
+                    console.log('🟢 Submit button clicked');
+                    setCanSubmit(true);
+                    // Trigger form submit sau khi set canSubmit
+                    setTimeout(() => {
+                      const form = document.querySelector('form');
+                      if (form) {
+                        form.requestSubmit();
+                      }
+                    }, 0);
+                  }}
                   disabled={isSubmitting}
                   className="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
@@ -701,6 +1051,7 @@ const ApplicationForm: React.FC = () => {
               )}
             </div>
           </form>
+        </div>
         </div>
       </div>
     </div>

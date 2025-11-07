@@ -90,6 +90,11 @@ CREATE TABLE IF NOT EXISTS applications (
   household_members_data TEXT,
   application_type TEXT,
   support_amount REAL,
+  payment_schedule TEXT,
+  payment_method TEXT,
+  bank_account_holder TEXT,
+  bank_account_number TEXT,
+  bank_name TEXT,
   status TEXT DEFAULT 'pending',
   assigned_officer_id INTEGER REFERENCES users(id),
   submitted_at TEXT DEFAULT (datetime('now')),
@@ -185,6 +190,16 @@ CREATE TABLE IF NOT EXISTS complaint_actions (
   comment TEXT,
   performed_by INTEGER REFERENCES users(id),
   created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS complaint_documents (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  complaint_id INTEGER REFERENCES complaints(id) ON DELETE CASCADE,
+  file_name TEXT NOT NULL,
+  file_path TEXT NOT NULL,
+  file_size INTEGER,
+  uploaded_by INTEGER REFERENCES users(id),
+  uploaded_at TEXT DEFAULT (datetime('now'))
 );
 
 -- ========================================

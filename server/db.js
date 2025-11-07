@@ -48,20 +48,23 @@ export const pool = {
       return Promise.resolve({ rows: [] });
     }
     else if (upperSql.startsWith('UPDATE') && sql.includes('RETURNING')) {
+      const returningMatch = sql.match(/RETURNING\s+(.+?)(?:;|$)/i);
+      const tableName = sql.match(/UPDATE\s+(\w+)/i)[1];
+      const whereMatch = sql.match(/WHERE\s+(.+?)\s+RETURNING/i);
+      
+      // Execute UPDATE first
       const info = stmt.run(...convertedParams);
       
-      const returningMatch = sql.match(/RETURNING\s+(.+?)(?:;|$)/i);
-      if (returningMatch && info.changes > 0) {
-        const tableName = sql.match(/UPDATE\s+(\w+)/i)[1];
-        const whereMatch = sql.match(/WHERE\s+(.+?)\s+RETURNING/i);
+      if (returningMatch && info.changes > 0 && whereMatch) {
+        // Extract WHERE condition and get the ID parameter
+        const wherePart = whereMatch[1];
+        // Find the position of WHERE clause in original params
+        const idParam = params[params.length - 1]; // Last parameter is usually the ID
         
-        if (whereMatch) {
-          const wherePart = whereMatch[1];
-          const { sql: selectWhereSql, params: selectParams } = convertParams(wherePart, params.slice(-wherePart.split('$').length + 1));
-          const selectSql = `SELECT ${returningMatch[1]} FROM ${tableName} WHERE ${selectWhereSql}`;
-          const result = db.prepare(selectSql).get(...selectParams);
-          return Promise.resolve({ rows: result ? [result] : [] });
-        }
+        // SELECT the updated row
+        const selectSql = `SELECT ${returningMatch[1]} FROM ${tableName} WHERE id = ?`;
+        const result = db.prepare(selectSql).get(idParam);
+        return Promise.resolve({ rows: result ? [result] : [] });
       }
       return Promise.resolve({ rows: [] });
     }

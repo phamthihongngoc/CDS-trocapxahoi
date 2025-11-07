@@ -33,6 +33,14 @@ const Homepage: React.FC = () => {
       roles: [UserRole.CITIZEN]
     },
     {
+      title: 'Gửi đơn khiếu nại',
+      description: 'Gửi khiếu nại, phản ánh về dịch vụ hỗ trợ',
+      icon: '📢',
+      href: '/create-complaint',
+      color: 'bg-yellow-500 hover:bg-yellow-600',
+      roles: [UserRole.CITIZEN]
+    },
+    {
       title: 'Quản lý hồ sơ',
       description: 'Xử lý và phê duyệt hồ sơ',
       icon: '📋',
@@ -127,47 +135,132 @@ const Homepage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-16">
-        <div className="container mx-auto px-4">
+      <section 
+        className={`relative text-white overflow-hidden ${isAuthenticated ? 'py-4' : 'py-8'}`}
+        style={{
+          backgroundImage: 'url(/img/bg.jpg)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+        }}
+      >
+        {/* Overlay màu xanh gradient với độ trong suốt thấp hơn */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/50 to-blue-800/50 backdrop-blur-[1px]"></div>
+        
+        <div className="container mx-auto px-4 relative z-10">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold mb-6">
-              Hệ thống Bảo trợ Xã hội Tỉnh Lạng Sơn
-            </h1>
-            <p className="text-xl md:text-2xl mb-8 text-blue-100">
-              Kết nối - Hỗ trợ - Phát triển cộng đồng
-            </p>
-            <div className="bg-white bg-opacity-10 backdrop-blur-sm rounded-lg p-6 mb-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
-                <div>
-                  <div className="text-3xl font-bold">2,450</div>
-                  <div className="text-blue-200">Hộ gia đình được hỗ trợ</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold">15</div>
-                  <div className="text-blue-200">Chương trình hỗ trợ</div>
-                </div>
-                <div>
-                  <div className="text-3xl font-bold">98%</div>
-                  <div className="text-blue-200">Hài lòng dịch vụ</div>
-                </div>
-              </div>
-            </div>
             {!isAuthenticated && (
-              <div className="space-x-4">
-                <a
-                  href="#/login"
-                  className="bg-white text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-block"
-                >
-                  Đăng nhập
-                </a>
-                <a
-                  href="#/programs-info"
-                  className="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors inline-block"
-                >
-                  Tìm hiểu chính sách
-                </a>
+              <>
+                <h1 className="text-3xl md:text-4xl font-bold mb-4 drop-shadow-lg">
+                  Hệ thống trợ cấp xã hội tỉnh Lạng Sơn
+                </h1>
+                <p className="text-lg md:text-xl mb-6 text-blue-50 drop-shadow-md">
+                  Kết nối - Hỗ trợ - Phát triển cộng đồng
+                </p>
+              </>
+            )}
+
+            {isAuthenticated && (
+              <div className="py-2"></div>
+            )}
+
+            {!isAuthenticated && (
+              <div className="max-w-xl mx-auto bg-white/20 backdrop-blur-md rounded-lg p-4 mb-5 shadow-2xl border border-white/30">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-center">
+                  <div>
+                    <div className="text-2xl font-bold drop-shadow-lg">2,450</div>
+                    <div className="text-sm text-blue-50 drop-shadow-md">Hộ gia đình được hỗ trợ</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold drop-shadow-lg">15</div>
+                    <div className="text-sm text-blue-50 drop-shadow-md">Chương trình hỗ trợ</div>
+                  </div>
+                  <div>
+                    <div className="text-2xl font-bold drop-shadow-lg">98%</div>
+                    <div className="text-sm text-blue-50 drop-shadow-md">Hài lòng dịch vụ</div>
+                  </div>
+                </div>
               </div>
             )}
+
+            {/* Menu Navigation Buttons */}
+            <div className={`flex flex-wrap justify-center gap-2 ${isAuthenticated ? 'mb-2' : 'mb-4'}`}>
+              {!isAuthenticated && (
+                <a 
+                  href="#/login" 
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+                >
+                  🔐 Đăng nhập
+                </a>
+              )}
+              
+              {isAuthenticated && user?.role === UserRole.CITIZEN && (
+                <>
+                  <a 
+                    href="#/apply" 
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+                  >
+                    📝 Đăng ký hỗ trợ
+                  </a>
+                  <a 
+                    href="#/my-applications" 
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+                  >
+                    🔍 Hồ sơ của tôi
+                  </a>
+                  <a 
+                    href="#/create-complaint" 
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+                  >
+                    📢 Gửi đơn khiếu nại
+                  </a>
+                </>
+              )}
+              
+              {isAuthenticated && (user?.role === UserRole.OFFICER || user?.role === UserRole.ADMIN) && (
+                <>
+                  <a 
+                    href="#/manage" 
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+                  >
+                    📋 Quản lý hồ sơ
+                  </a>
+                  <a 
+                    href="#/statistics" 
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+                  >
+                    📊 Thống kê
+                  </a>
+                  <a 
+                    href="#/programs" 
+                    className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+                  >
+                    🎯 Chương trình
+                  </a>
+                </>
+              )}
+              
+              {isAuthenticated && user?.role === UserRole.ADMIN && (
+                <a 
+                  href="#/admin" 
+                  className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+                >
+                  ⚙️ Quản trị
+                </a>
+              )}
+              
+              <a 
+                href="#/programs-info" 
+                className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+              >
+                📚 Chính sách
+              </a>
+              <a 
+                href="#/contact" 
+                className="bg-white/20 hover:bg-white/30 backdrop-blur-md text-white px-6 py-2.5 rounded-xl font-medium transition-all duration-300 border border-white/30 hover:border-white/50 hover:scale-105 hover:shadow-lg"
+              >
+                📞 Liên hệ
+              </a>
+            </div>
           </div>
         </div>
       </section>

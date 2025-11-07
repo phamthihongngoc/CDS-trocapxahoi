@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import OfficerLayout from '../components/OfficerLayout';
-import { ArrowLeft, FileText, User, Clock } from 'lucide-react';
+import { FileText, User, Clock } from 'lucide-react';
 import api from '../utils/api';
 
 interface Application {
@@ -43,7 +43,6 @@ interface HistoryItem {
 
 const ApplicationDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
-  const navigate = useNavigate();
   const [application, setApplication] = useState<Application | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -74,11 +73,15 @@ const ApplicationDetail: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; className: string }> = {
-      'draft': { label: 'Bản nhập', className: 'bg-gray-100 text-gray-800' },
+      'draft': { label: 'Bản nháp', className: 'bg-gray-100 text-gray-800' },
       'pending': { label: 'Đã nộp', className: 'bg-blue-100 text-blue-800' },
       'under_review': { label: 'Đang xét duyệt', className: 'bg-yellow-100 text-yellow-800' },
+      'additional_info_required': { label: 'Yêu cầu bổ sung', className: 'bg-orange-100 text-orange-800' },
       'approved': { label: 'Đã duyệt', className: 'bg-green-500 text-white' },
       'rejected': { label: 'Từ chối', className: 'bg-red-100 text-red-800' },
+      'pending_payment': { label: 'Chờ chi trả', className: 'bg-purple-100 text-purple-800' },
+      'paid': { label: 'Đã chi trả', className: 'bg-teal-100 text-teal-800' },
+      'closed': { label: 'Đã đóng', className: 'bg-gray-100 text-gray-800' }
     };
     return statusMap[status] || { label: status, className: 'bg-gray-100 text-gray-800' };
   };
@@ -139,16 +142,10 @@ const ApplicationDetail: React.FC = () => {
 
   return (
     <OfficerLayout>
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={() => navigate('/officer/applications')}
-            className="flex items-center text-gray-600 hover:text-gray-900"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Quay lại danh sách
-          </button>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Chi tiết hồ sơ</h1>
           <span className={`px-4 py-2 rounded-lg font-medium ${statusInfo.className}`}>
             {statusInfo.label}
           </span>

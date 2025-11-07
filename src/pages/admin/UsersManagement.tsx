@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
-import { Users, UserPlus, Edit2, Trash2, Search, Shield, UserCircle } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Users, UserPlus, Edit2, Trash2, Search, Shield, UserCircle, Upload, Download } from 'lucide-react';
 import api from '../../utils/api';
 import OfficerLayout from '../../components/OfficerLayout';
+import { useToast, useConfirm } from '../../hooks/useNotification';
 
 interface User {
   id: number;
@@ -19,6 +20,9 @@ interface UserStats {
 }
 
 export default function UsersManagement() {
+  const { showSuccess, showError, showWarning, ToastComponent } = useToast();
+  const { showConfirm, ConfirmComponent } = useConfirm();
+  
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<UserStats>({ total: 0, citizens: 0, officers: 0, admins: 0 });
   const [loading, setLoading] = useState(true);
@@ -35,6 +39,11 @@ export default function UsersManagement() {
     password: '',
     role: 'CITIZEN'
   });
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<any[]>([]);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchStats();
@@ -87,21 +96,26 @@ export default function UsersManagement() {
   };
 
   const handleDeleteUser = async (userId: number) => {
-    if (!confirm('Bạn có chắc muốn xóa người dùng này?')) return;
+    showConfirm(
+      'Xác nhận xóa người dùng',
+      'Bạn có chắc muốn xóa người dùng này? Hành động này không thể hoàn tác.',
+      async () => {
+        try {
+          const response = await api.delete(`/api/admin/users/${userId}`);
 
-    try {
-      const response = await api.delete(`/api/admin/users/${userId}`);
-
-      if (response.success) {
-        alert('Xóa người dùng thành công!');
-        fetchUsers();
-        fetchStats();
-      } else {
-        alert(response.error || 'Lỗi xóa người dùng');
-      }
-    } catch (error: any) {
-      alert(error.message || 'Lỗi xóa người dùng');
-    }
+          if (response.success) {
+            showSuccess('Xóa người dùng thành công!');
+            fetchUsers();
+            fetchStats();
+          } else {
+            showError(response.error || 'Lỗi xóa người dùng');
+          }
+        } catch (error: any) {
+          showError(error.message || 'Lỗi xóa người dùng');
+        }
+      },
+      { type: 'danger', confirmText: 'Xóa', cancelText: 'Hủy' }
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -116,15 +130,15 @@ export default function UsersManagement() {
       }
 
       if (response.success) {
-        alert(response.message || 'Thành công!');
+        showSuccess(response.message || (modalMode === 'add' ? 'Thêm người dùng thành công!' : 'Cập nhật người dùng thành công!'));
         setShowModal(false);
         fetchUsers();
         fetchStats();
       } else {
-        alert(response.error || 'Có lỗi xảy ra');
+        showError(response.error || 'Có lỗi xảy ra');
       }
     } catch (error: any) {
-      alert(error.message || 'Có lỗi xảy ra');
+      showError(error.message || 'Có lỗi xảy ra');
     }
   };
 
@@ -144,6 +158,100 @@ export default function UsersManagement() {
       CITIZEN: 'Công dân'
     };
     return roles[role as keyof typeof roles] || role;
+  };
+
+  // CSV Import functions
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.name.endsWith('.csv')) {
+        showWarning('Vui lòng chọn file CSV hợp lệ');
+        return;
+      }
+      setImportFile(file);
+      parseCSV(file);
+    }
+  };
+
+  const parseCSV = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      // Skip header row
+      const dataLines = lines.slice(1);
+      
+      const parsed = dataLines.map((line, index) => {
+        const cols = line.split(',').map(col => col.trim().replace(/^"|"$/g, ''));
+        return {
+          index: index + 1,
+          full_name: cols[0] || '',
+          citizen_id: cols[1] || '',
+          email: cols[2] || '',
+          phone: cols[3] || '',
+          address: cols[4] || '',
+          role: cols[5]?.toUpperCase() || 'CITIZEN',
+          password: cols[6] || '123456'
+        };
+      }).filter(item => item.full_name && item.citizen_id); // Only valid rows
+
+      setImportPreview(parsed);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleImport = async () => {
+    if (importPreview.length === 0) {
+      showWarning('Không có dữ liệu để import. Vui lòng chọn file CSV hợp lệ.');
+      return;
+    }
+
+    showConfirm(
+      'Xác nhận import người dùng',
+      `Bạn có chắc muốn import ${importPreview.length} người dùng vào hệ thống?`,
+      async () => {
+        try {
+          setImporting(true);
+          const response = await api.post('/api/admin/users/import', {
+            users: importPreview
+          });
+
+          if (response.success) {
+            showSuccess(`🎉 Import thành công ${response.imported}/${importPreview.length} người dùng!`);
+            setShowImportModal(false);
+            setImportFile(null);
+            setImportPreview([]);
+            fetchUsers();
+            fetchStats();
+          } else {
+            showError(response.error || 'Có lỗi xảy ra khi import');
+          }
+        } catch (error: any) {
+          showError(error.message || 'Có lỗi xảy ra khi import');
+        } finally {
+          setImporting(false);
+        }
+      },
+      { 
+        type: 'info', 
+        confirmText: `Import ${importPreview.length} người dùng`,
+        cancelText: 'Hủy'
+      }
+    );
+  };
+
+  const downloadSampleCSV = () => {
+    const sample = `full_name,citizen_id,email,phone,address,role,password
+Nguyễn Văn A,001098123456,nguyenvana@example.com,0987654321,Hà Nội,CITIZEN,123456
+Trần Thị B,025088234567,tranthib@langson.gov.vn,0912345678,Lạng Sơn,OFFICER,123456
+Lê Văn C,035099345678,levanc@langson.gov.vn,0923456789,Lạng Sơn,ADMIN,123456`;
+
+    const blob = new Blob([sample], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'sample_users.csv';
+    link.click();
   };
 
   return (
@@ -228,6 +336,14 @@ export default function UsersManagement() {
           </select>
 
           <button
+            onClick={() => setShowImportModal(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+          >
+            <Upload className="w-5 h-5" />
+            Import CSV
+          </button>
+
+          <button
             onClick={handleAddUser}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
           >
@@ -236,6 +352,15 @@ export default function UsersManagement() {
           </button>
         </div>
       </div>
+
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".csv"
+        onChange={handleFileSelect}
+        className="hidden"
+      />
 
       {/* Users Table */}
       <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -411,6 +536,149 @@ export default function UsersManagement() {
           </div>
         </div>
       )}
+
+      {/* Import Modal */}
+      {showImportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold">Import Người dùng từ CSV</h2>
+              <button
+                onClick={() => {
+                  setShowImportModal(false);
+                  setImportFile(null);
+                  setImportPreview([]);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="p-6">
+              {/* File upload section */}
+              <div className="mb-6">
+                <div className="flex items-center gap-4 mb-4">
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  >
+                    <Upload className="w-5 h-5" />
+                    Chọn file CSV
+                  </button>
+                  
+                  <button
+                    onClick={downloadSampleCSV}
+                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  >
+                    <Download className="w-5 h-5" />
+                    Tải file mẫu
+                  </button>
+
+                  {importFile && (
+                    <span className="text-sm text-gray-600">
+                      Đã chọn: <strong>{importFile.name}</strong>
+                    </span>
+                  )}
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm text-blue-800">
+                  <strong>Hướng dẫn:</strong>
+                  <ul className="list-disc ml-5 mt-2 space-y-1">
+                    <li>File CSV phải có 7 cột: <code className="bg-blue-100 px-1 rounded">full_name, citizen_id, email, phone, address, role, password</code></li>
+                    <li>Vai trò (role) có thể là: CITIZEN, OFFICER, ADMIN</li>
+                    <li>Mật khẩu mặc định: 123456</li>
+                    <li>Tải file mẫu để xem định dạng chính xác</li>
+                  </ul>
+                </div>
+              </div>
+
+              {/* Preview table */}
+              {importPreview.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-3">
+                    Xem trước ({importPreview.length} người dùng)
+                  </h3>
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Họ tên</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">CCCD</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Email</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">SĐT</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Địa chỉ</th>
+                          <th className="px-4 py-2 text-left text-xs font-medium text-gray-500">Vai trò</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {importPreview.map((user, index) => (
+                          <tr key={index} className="hover:bg-gray-50">
+                            <td className="px-4 py-2 text-sm text-gray-900">{user.full_name}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">{user.citizen_id}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">{user.email}</td>
+                            <td className="px-4 py-2 text-sm text-gray-900">{user.phone}</td>
+                            <td className="px-4 py-2 text-sm text-gray-600">{user.address}</td>
+                            <td className="px-4 py-2">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                user.role === 'ADMIN' ? 'bg-red-100 text-red-800' :
+                                user.role === 'OFFICER' ? 'bg-blue-100 text-blue-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                                {user.role === 'ADMIN' ? 'Quản trị viên' :
+                                 user.role === 'OFFICER' ? 'Cán bộ' : 'Công dân'}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowImportModal(false);
+                    setImportFile(null);
+                    setImportPreview([]);
+                  }}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Hủy
+                </button>
+                
+                {importPreview.length > 0 && (
+                  <button
+                    onClick={handleImport}
+                    disabled={importing}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    {importing ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        Đang import...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-5 h-5" />
+                        Import {importPreview.length} người dùng
+                      </>
+                    )}
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Toast and Confirm Components */}
+      {ToastComponent}
+      {ConfirmComponent}
     </OfficerLayout>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import OfficerLayout from '../components/OfficerLayout';
-import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Check, Upload, X, FileText } from 'lucide-react';
 import api from '../utils/api';
 
 interface Program {
@@ -45,6 +45,8 @@ const CreateApplication: React.FC = () => {
   
   // Step 4: Tài liệu
   const [documents, setDocuments] = useState('');
+  const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
+  const [uploadPreview, setUploadPreview] = useState<string[]>([]);
 
   useEffect(() => {
     fetchPrograms();
@@ -152,6 +154,70 @@ const CreateApplication: React.FC = () => {
     const updated = [...householdMembers];
     updated[index] = { ...updated[index], [field]: value };
     setHouseholdMembers(updated);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const newFiles = Array.from(files);
+    const validFiles: File[] = [];
+    const newPreviews: string[] = [];
+
+    newFiles.forEach(file => {
+      // Kiểm tra kích thước file (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`File ${file.name} quá lớn. Kích thước tối đa là 10MB.`);
+        return;
+      }
+
+      // Kiểm tra định dạng file
+      const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+      if (!allowedTypes.includes(file.type)) {
+        alert(`File ${file.name} không đúng định dạng. Chỉ chấp nhận: PNG, JPG, PDF, DOCX`);
+        return;
+      }
+
+      validFiles.push(file);
+      
+      // Tạo preview cho ảnh
+      if (file.type.startsWith('image/')) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            setUploadPreview(prev => [...prev, e.target!.result as string]);
+          }
+        };
+        reader.readAsDataURL(file);
+      } else {
+        newPreviews.push('');
+      }
+    });
+
+    setUploadedFiles(prev => [...prev, ...validFiles]);
+    if (newPreviews.length > 0) {
+      setUploadPreview(prev => [...prev, ...newPreviews]);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setUploadedFiles(prev => prev.filter((_, i) => i !== index));
+    setUploadPreview(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const getFileIcon = (file: File) => {
+    if (file.type.startsWith('image/')) return '🖼️';
+    if (file.type === 'application/pdf') return '📄';
+    if (file.type.includes('word')) return '📝';
+    return '📎';
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
   };
 
   return (
@@ -488,6 +554,79 @@ const CreateApplication: React.FC = () => {
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+
+              {/* File Upload Section */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Upload tài liệu minh chứng
+                </label>
+                <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:border-blue-500 transition-colors">
+                  <input
+                    type="file"
+                    multiple
+                    accept=".png,.jpg,.jpeg,.pdf,.docx"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                    id="file-upload"
+                  />
+                  <label 
+                    htmlFor="file-upload" 
+                    className="cursor-pointer flex flex-col items-center"
+                  >
+                    <Upload className="w-12 h-12 text-gray-400 mb-3" />
+                    <span className="text-sm font-medium text-gray-700 mb-1">
+                      Nhấn để chọn file hoặc kéo thả vào đây
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      Hỗ trợ: PNG, JPG, PDF, DOCX (tối đa 10MB/file)
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Uploaded Files List */}
+              {uploadedFiles.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="text-sm font-medium text-gray-700">
+                    Tài liệu đã tải lên ({uploadedFiles.length})
+                  </h3>
+                  <div className="space-y-2">
+                    {uploadedFiles.map((file, index) => (
+                      <div 
+                        key={index}
+                        className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border border-gray-200 hover:bg-gray-100 transition-colors"
+                      >
+                        {uploadPreview[index] ? (
+                          <img 
+                            src={uploadPreview[index]} 
+                            alt={file.name}
+                            className="w-12 h-12 object-cover rounded"
+                          />
+                        ) : (
+                          <div className="w-12 h-12 flex items-center justify-center bg-white rounded border border-gray-200">
+                            <FileText className="w-6 h-6 text-gray-400" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {getFileIcon(file)} {file.name}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {formatFileSize(file.size)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="p-1 hover:bg-red-100 rounded-full transition-colors group"
+                          title="Xóa file"
+                        >
+                          <X className="w-5 h-5 text-gray-400 group-hover:text-red-600" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Summary */}
               <div className="bg-blue-50 p-6 rounded-lg">

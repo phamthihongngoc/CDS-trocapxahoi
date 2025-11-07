@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { UserRole } from '../types';
 import api from '../utils/api';
+import NavigationHero from '../components/NavigationHero';
 
 interface Program {
   id: number;
@@ -130,7 +131,9 @@ const ProgramsPage: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50">
+      <NavigationHero />
+      <div className="py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-6">
           <div>
@@ -322,6 +325,7 @@ const ProgramsPage: React.FC = () => {
             <p className="text-gray-500">Chưa có chương trình hỗ trợ nào</p>
           </div>
         )}
+      </div>
       </div>
     </div>
   );

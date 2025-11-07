@@ -3,16 +3,23 @@ export const apiCall = async (
   options: RequestInit = {}
 ): Promise<Response> => {
   const user = localStorage.getItem('currentUser');
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...options.headers as Record<string, string>
+
+  // Clone headers into a mutable object
+  const baseHeaders: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
   };
+
+  // Detect FormData to avoid setting Content-Type (browser will set boundary)
+  const isForm = typeof FormData !== 'undefined' && options.body instanceof FormData;
+  if (!isForm) {
+    baseHeaders['Content-Type'] = baseHeaders['Content-Type'] || 'application/json';
+  }
 
   if (user) {
     try {
       const userData = JSON.parse(user);
-      headers['x-user-id'] = userData.id;
-      headers['x-user-role'] = userData.role;
+      baseHeaders['x-user-id'] = userData.id;
+      baseHeaders['x-user-role'] = userData.role;
     } catch (e) {
       console.error('Failed to parse user data', e);
     }
@@ -20,7 +27,7 @@ export const apiCall = async (
 
   return fetch(url, {
     ...options,
-    headers
+    headers: baseHeaders,
   });
 };
 
@@ -37,12 +44,38 @@ const api = {
     });
     return response.json();
   },
+
+  // Post with FormData (multipart). Do not set Content-Type manually.
+  postForm: async (url: string, formData: FormData) => {
+    const response = await apiCall(url, {
+      method: 'POST',
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Có lỗi xảy ra');
+    }
+    return response.json();
+  },
   
   put: async (url: string, data: any) => {
     const response = await apiCall(url, {
       method: 'PUT',
       body: JSON.stringify(data)
     });
+    return response.json();
+  },
+
+  // Put with FormData (multipart). Do not set Content-Type manually.
+  putForm: async (url: string, formData: FormData) => {
+    const response = await apiCall(url, {
+      method: 'PUT',
+      body: formData,
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Có lỗi xảy ra');
+    }
     return response.json();
   },
   

@@ -42,23 +42,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         body: JSON.stringify({ email, password }),
       });
 
+      if (!response.ok) {
+        console.error('Login failed with status:', response.status);
+        return false;
+      }
+
       const data = await response.json();
 
-      if (response.ok && data.success) {
+      if (data.success && data.user) {
         const userData: User = {
-          id: data.user.id.toString(),
-          username: data.user.email,
-          fullName: data.user.full_name,
-          email: data.user.email,
+          id: data.user.id?.toString() || '',
+          username: data.user.email || data.user.citizen_id || '',
+          citizenId: data.user.citizen_id || '',
+          fullName: data.user.full_name || '',
+          email: data.user.email || '',
           phone: data.user.phone || '',
           role: data.user.role as UserRole,
           address: data.user.address || '',
-          createdAt: data.user.created_at,
+          createdAt: data.user.created_at || new Date().toISOString(),
           isActive: true
         };
         
         setUser(userData);
         localStorage.setItem('currentUser', JSON.stringify(userData));
+        localStorage.setItem('userId', userData.id.toString());
         localStorage.setItem('userRole', userData.role);
         return true;
       }

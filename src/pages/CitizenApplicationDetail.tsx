@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, FileText, Calendar, User, MapPin, Home, DollarSign, CheckCircle, XCircle, Clock, AlertCircle, Phone, Mail } from 'lucide-react';
+import { FileText, Calendar, User, MapPin, Home, DollarSign, CheckCircle, XCircle, Clock, AlertCircle, Phone, Mail } from 'lucide-react';
 import api from '../utils/api';
+import NavigationHero from '../components/NavigationHero';
 
 interface Application {
   id: number;
@@ -132,17 +133,10 @@ const CitizenApplicationDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50">
+      <NavigationHero />
+      <div className="py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Back Button */}
-        <button
-          onClick={() => navigate('/my-applications')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6 transition-colors"
-        >
-          <ArrowLeft className="w-5 h-5" />
-          <span className="font-medium">Quay lại danh sách</span>
-        </button>
-
         {/* Header Card */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -403,6 +397,7 @@ const CitizenApplicationDetail: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -25,8 +25,18 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className="bg-blue-600 text-white shadow-lg">
-      <div className="container mx-auto px-4">
+    <header 
+      className="relative text-white shadow-lg overflow-hidden"
+      style={{
+        backgroundImage: 'url(/img/bg.jpg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+    >
+      {/* Overlay mờ màu xanh */}
+      <div className="absolute inset-0 bg-blue-600/85 backdrop-blur-sm"></div>
+      
+      <div className="container mx-auto px-4 relative z-10">
         <div className="flex items-center justify-between h-16">
           {/* Logo và tên hệ thống */}
           <div className="flex items-center space-x-4">
@@ -39,59 +49,10 @@ const Header: React.FC = () => {
             </div>
           </div>
 
-          {/* Navigation Menu */}
-          <nav className="hidden md:flex space-x-8">
-            <a href="#/" className="hover:text-blue-200 transition-colors">
-              Trang chủ
-            </a>
-            {isAuthenticated && (
-              <>
-                {user?.role === UserRole.CITIZEN && (
-                  <>
-                    <a href="#/apply" className="hover:text-blue-200 transition-colors">
-                      Đăng ký hỗ trợ
-                    </a>
-                    <a href="#/my-applications" className="hover:text-blue-200 transition-colors">
-                      Hồ sơ của tôi
-                    </a>
-                  </>
-                )}
-                {(user?.role === UserRole.OFFICER ||
-                  user?.role === UserRole.ADMIN) && (
-                  <>
-                    <a href="#/manage" className="hover:text-blue-200 transition-colors">
-                      Quản lý hồ sơ
-                    </a>
-                    <a href="#/statistics" className="hover:text-blue-200 transition-colors">
-                      Thống kê
-                    </a>
-                  </>
-                )}
-                {(user?.role === UserRole.OFFICER ||
-                  user?.role === UserRole.ADMIN) && (
-                  <a href="#/programs" className="hover:text-blue-200 transition-colors">
-                    Chương trình
-                  </a>
-                )}
-                {user?.role === UserRole.ADMIN && (
-                  <a href="#/admin" className="hover:text-blue-200 transition-colors">
-                    Quản trị
-                  </a>
-                )}
-              </>
-            )}
-            <a href="#/programs-info" className="hover:text-blue-200 transition-colors">
-              Chính sách
-            </a>
-            <a href="#/contact" className="hover:text-blue-200 transition-colors">
-              Liên hệ
-            </a>
-          </nav>
-
-          {/* User Info & Login/Logout */}
+          {/* User Info & Logout */}
           <div className="flex items-center space-x-4">
             {isAuthenticated && <NotificationBell />}
-            {isAuthenticated ? (
+            {isAuthenticated && (
               <div className="flex items-center space-x-4">
                 <div className="text-sm">
                   <div className="font-medium">{user?.fullName}</div>
@@ -104,13 +65,6 @@ const Header: React.FC = () => {
                   Đăng xuất
                 </button>
               </div>
-            ) : (
-              <a
-                href="#/login"
-                className="bg-blue-700 hover:bg-blue-800 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                Đăng nhập
-              </a>
             )}
           </div>
         </div>

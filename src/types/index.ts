@@ -3,6 +3,7 @@
 export interface User {
   id: string;
   username: string;
+  citizenId?: string; // CCCD
   fullName: string;
   email: string;
   phone: string;

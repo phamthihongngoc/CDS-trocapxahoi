@@ -10,9 +10,53 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4">Liên hệ</h3>
             <div className="space-y-2 text-gray-300">
               <p>📍 UBND Tỉnh Lạng Sơn</p>
-              <p>📍 Số 01, Đường Lê Duẩn, TP. Lạng Sơn</p>
-              <p>📞 Hotline: 1900-1234</p>
-              <p>📧 baotro@langson.gov.vn</p>
+              <p>
+                📍{" "}
+                <a
+                  href="https://www.google.com/maps/search/?api=1&query=Số+01+Hùng+Vương,+P.+Hoàng+Văn+Thụ,+TP.+Lạng+Sơn,+Tỉnh+Lạng+Sơn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:text-white underline"
+                >
+                  Số 01 Hùng Vương, P. Hoàng Văn Thụ, TP. Lạng Sơn
+                </a>
+              </p>
+              <p>
+                📞 Hotline:{" "}
+                <a href="tel:1900-1234" className="hover:text-white">
+                  1900-1234
+                </a>
+              </p>
+              <p>
+                📧{" "}
+                <a
+                  href="mailto:baotro@langson.gov.vn"
+                  className="hover:text-white"
+                >
+                  baotro@langson.gov.vn
+                </a>
+              </p>
+            </div>
+            {/* Google Maps */}
+            <div className="mt-4">
+              <a
+                href="https://www.google.com/maps/search/?api=1&query=Số+01+Hùng+Vương,+P.+Hoàng+Văn+Thụ,+TP.+Lạng+Sơn,+Tỉnh+Lạng+Sơn"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block"
+              >
+                <iframe
+                  src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3705.8!2d106.7611!3d21.8532!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zMjHCsDUxJzExLjUiTiAxMDbCsDQ1JzQwLjAiRQ!5e0!3m2!1svi!2s!4v1234567890"
+                  width="100%"
+                  height="150"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  className="rounded-lg hover:opacity-80 transition-opacity cursor-pointer"
+                  title="Bản đồ vị trí UBND Tỉnh Lạng Sơn"
+                ></iframe>
+              </a>
             </div>
           </div>
 
@@ -21,22 +65,22 @@ const Footer: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4">Dịch vụ</h3>
             <ul className="space-y-2 text-gray-300">
               <li>
-                <a href="/programs-info" className="hover:text-white">
+                <a href="#/programs-info" className="hover:text-white">
                   Chính sách hỗ trợ
                 </a>
               </li>
               <li>
-                <a href="/apply" className="hover:text-white">
+                <a href="#/apply" className="hover:text-white">
                   Đăng ký trực tuyến
                 </a>
               </li>
               <li>
-                <a href="/applications" className="hover:text-white">
+                <a href="#/my-applications" className="hover:text-white">
                   Tra cứu hồ sơ
                 </a>
               </li>
               <li>
-                <a href="/guide" className="hover:text-white">
+                <a href="#/programs-info" className="hover:text-white">
                   Hướng dẫn sử dụng
                 </a>
               </li>
@@ -81,22 +125,22 @@ const Footer: React.FC = () => {
             </div>
             <div className="flex space-x-4 mt-4 md:mt-0">
               <a
-                href="/privacy"
+                href="#/programs-info"
                 className="text-gray-300 hover:text-white text-sm"
               >
                 Chính sách bảo mật
               </a>
               <a
-                href="/terms"
+                href="#/programs-info"
                 className="text-gray-300 hover:text-white text-sm"
               >
                 Điều khoản sử dụng
               </a>
               <a
-                href="/accessibility"
+                href="#/contact"
                 className="text-gray-300 hover:text-white text-sm"
               >
-                Hỗ trợ tiếp cận
+                Liên hệ hỗ trợ
               </a>
             </div>
           </div>
