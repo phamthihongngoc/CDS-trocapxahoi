@@ -161,7 +161,7 @@ export const ForgotPasswordPage: React.FC = () => {
     </div>
   );
 
-  const bgStyle = { backgroundImage: 'url(/img/bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' };
+  const bgStyle = { backgroundImage: 'url(/imgs/bg.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4" style={bgStyle}>

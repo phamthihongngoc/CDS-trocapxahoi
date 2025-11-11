@@ -9,7 +9,7 @@ const NavigationHero: React.FC = () => {
     <section 
       className="sticky top-0 z-50 text-white py-10 mb-2 shadow-lg"
       style={{
-        backgroundImage: 'url(/img/bg.jpg)',
+        backgroundImage: 'url(/imgs/bg.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}

@@ -68,7 +68,7 @@ const RegisterPage: React.FC = () => {
     <div 
       className="min-h-screen flex items-center justify-center p-4"
       style={{
-        backgroundImage: 'url(/img/bg.jpg)',
+        backgroundImage: 'url(/imgs/bg.jpg)',
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat'

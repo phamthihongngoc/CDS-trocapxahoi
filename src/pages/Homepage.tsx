@@ -138,7 +138,7 @@ const Homepage: React.FC = () => {
       <section 
         className={`relative text-white overflow-hidden ${isAuthenticated ? 'py-4' : 'py-8'}`}
         style={{
-          backgroundImage: 'url(/img/bg.jpg)',
+          backgroundImage: 'url(/imgs/bg.jpg)',
           backgroundSize: 'cover',
           backgroundPosition: 'center',
         }}
